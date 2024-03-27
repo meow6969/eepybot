@@ -25,6 +25,7 @@ with open("config.json") as meowf:
     eepy_server = meow["eepy-server"]
     eepy_role = meow["eepy-role"]
     mins_to_eep = meow["mins-to-eep"]
+    welcome_channel = meow["welcome-channel"]
 
 
 def log_print(text):
@@ -41,6 +42,7 @@ client.timeout_time = timeout_time
 client.eepy_server = eepy_server
 client.eepy_role = eepy_role
 client.mins_to_eep = mins_to_eep
+client.welcome_channel = welcome_channel
 
 
 @client.event
@@ -88,7 +90,9 @@ async def reload(ctx):
 
 @client.event
 async def on_member_join(member):
-    chnl = client.get_channel(825875712559808522)
+    chnl = client.get_channel(welcome_channel)
+    if chnl.guild != client.get_guild(eepy_server):
+        return
     await chnl.send(f"heloooooooooooooooooooooo <@{member.id}>")
 
 
