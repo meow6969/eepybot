@@ -34,22 +34,47 @@ class misc(commands.Cog):
     async def execute(self, ctx, *, code):
         if ctx.author.id not in self.client.owners:
             return
-        if code.startswith("```"):
-            code = code[3:]
+        if code.strip() == "":
+            await ctx.send("there is no code")
+            return
+        ansi = ""
+        nobacktick = False
+        slice_num = 0
+        if "return=" in code.split()[0]:
+            slice_num += len(code.split()[0])
+            args = code.split()[0].split("=")[1].split(",")
+            for arg in args:
+                if arg == "ansi":
+                    ansi = "ansi"
+                elif arg == "nobacktick":
+                    nobacktick = True
+        code = code[slice_num:]
+        if code.strip().startswith("```"):
+            code = code.strip()[3:]
             if code.startswith("py"):
                 code = code[3:]
         if code[-3:] == "```":
             code = code[:-3]
         str_obj = io.StringIO()  # Retrieves a stream of data
+
         try:
             with contextlib.redirect_stdout(str_obj):
                 exec(code, {'self': self})
         except Exception as e:
             return await ctx.send(f"```py\n{e.__class__.__name__}: {e}```")
-        if str_obj.getvalue().strip() == "":
+        
+        stdout = str_obj.getvalue()
+        if stdout == "":
             await ctx.send("no stdout")
             return
-        await ctx.send(f'```py\n{str_obj.getvalue()}```')
+        if nobacktick:
+            stdout = stdout.replace("`", "'")
+        if len(stdout) > 1990:
+            msg = f"output is too long, truncating\n```{ansi}\n{stdout}"[:1990]
+            msg += "```"
+            await ctx.send(msg)
+            return
+        await ctx.send(f'```{ansi}\n{stdout}```')
 
 
 async def setup(client):
