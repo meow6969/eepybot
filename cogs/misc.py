@@ -24,9 +24,9 @@ class misc(commands.Cog):
             return
         await chnl.send(f"heloooooooooooooooooooooo <@{member.id}>")
 
-    # @commands.command()
-    # async def ping(self, ctx):
-    #     await ctx.send(f"pong! `{round(self.client.latency * 1000)}ms`")
+    @commands.command()
+    async def ping(self, ctx):
+        await ctx.send(f"pong! `{round(self.client.latency * 1000)}ms`")
 
 
 async def setup(client):
