@@ -22,7 +22,7 @@ class misc(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
         chnl = self.client.get_channel(self.client.welcome_channel)
-        if chnl.guild != self.client.get_guild(self.client.eepy_server):
+        if member.guild != self.client.get_guild(self.client.eepy_server):
             return
         await chnl.send(f"heloooooooooooooooooooooo <@{member.id}>")
 
