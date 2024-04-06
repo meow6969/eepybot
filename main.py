@@ -1,21 +1,12 @@
+import importlib
 import json
-import datetime
+import os
 
+import git
 import discord
 from discord.ext import commands
-from discord.ext import tasks
 
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+from utils import classes
 
 
 with open("config.json") as meowf:
@@ -26,16 +17,17 @@ with open("config.json") as meowf:
     eepy_role = meow["eepy-role"]
     mins_to_eep = meow["mins-to-eep"]
     welcome_channel = meow["welcome-channel"]
-
-
-def log_print(text):
-    with open("log.txt", "a+") as f:
-        f.write(f"{text}\n")
+    debug = meow["debug"]
+    debug_prefix = meow["debug-prefix"]
+    owners = meow["owner-ids"]
 
 
 bot_intents = discord.Intents.default()
 bot_intents.members = True
 bot_intents.message_content = True
+
+if debug:
+    prefix = debug_prefix
 
 client = commands.Bot(command_prefix=prefix, intents=bot_intents, fetch_offline_members=True, case_insensitive=True)
 client.timeout_time = timeout_time
@@ -43,80 +35,63 @@ client.eepy_server = eepy_server
 client.eepy_role = eepy_role
 client.mins_to_eep = mins_to_eep
 client.welcome_channel = welcome_channel
+client.debug = debug
+client.owners = owners
 
 
 @client.event
 async def on_ready():
     # cogs
-    # cogs = os.listdir('./cogs/')
-    # for cog in cogs:
-    #     cog_list = cog.split('.')
-    #     if cog_list[len(cog_list) - 1] == 'py':
-    #         await client.load_extension(f'cogs.{cog_list[0]}')
-    timeout_eepy.start()
+    cogs = os.listdir('./cogs/')
+    for cog in cogs:
+        cog_list = cog.split('.')
+        if cog_list[len(cog_list) - 1] == 'py':
+            await client.load_extension(f'cogs.{cog_list[0]}')
 
-    print(f'{bcolors.OKGREEN}Logged on as {client.user}!{bcolors.ENDC}')
+    print(f'{classes.bcolors.OKGREEN}Logged on as {client.user}!{classes.bcolors.ENDC}')
 
-    with open('config.json') as configf:
-        config = json.load(configf)
-        client.owners = config['owner-ids']
-
-    print(f'{bcolors.OKGREEN}loaded eepybot{bcolors.ENDC}')
-
-
-@client.listen('on_message')
-async def on_message(message):
-    if message.content.strip() != '':
-        print(f'{bcolors.OKCYAN}Message from {message.author}: {message.content}{bcolors.ENDC}')
+    if client.debug:
+        print(f'{classes.bcolors.OKGREEN}loaded debug eepybot{classes.bcolors.ENDC}')
+    else:
+        print(f'{classes.bcolors.OKGREEN}loaded eepybot{classes.bcolors.ENDC}')
 
 
 @client.command(hidden=True)
 async def reload(ctx):
     with open('config.json') as file:
-        owners = json.load(file)["owner-ids"]
+        client.owners = json.load(file)["owner-ids"]
     if ctx.author.id in owners:
+        if not debug:
+            try:
+                g = git.cmd.Git(os.getcwd())
+                g.pull()
+            except Exception as e:
+                await ctx.send(f"error in git pull:\n{e}")
         with open('config.json') as configf:
             config = json.load(configf)
             client.owners = config['owner-ids']
 
-        # cogs_ = os.listdir('./cogs/')
-        # for cog_ in cogs_:
-        #     _cog_list = cog_.split('.')
-        #     if _cog_list[len(_cog_list) - 1] == 'py':
-        #         await client.reload_extension(f'cogs.{_cog_list[0]}')
+        try:
+            importlib.reload(classes)
+        except Exception as e:
+            ctx.send(f"error in reloading main.py imports:\n{e}")
+
+        try:
+            cogs_ = os.listdir('./cogs/')
+            for cog_ in cogs_:
+                _cog_list = cog_.split('.')
+                if _cog_list[len(_cog_list) - 1] == 'py':
+                    await client.reload_extension(f'cogs.{_cog_list[0]}')
+        except Exception as e:
+            await ctx.send(f"error in reloading cogs:\n{e}")
 
         await ctx.send('reloaded')
 
-
-@client.event
-async def on_member_join(member):
-    chnl = client.get_channel(welcome_channel)
-    if chnl.guild != client.get_guild(eepy_server):
-        return
-    await chnl.send(f"heloooooooooooooooooooooo <@{member.id}>")
-
-
-@tasks.loop(seconds=30)
-async def timeout_eepy():
-    log_print(datetime.datetime.now().strftime('%H:%M'))
-    if datetime.datetime.now().strftime('%H:%M') == client.timeout_time:
-        server = client.get_guild(client.eepy_server)
-        for m in server.members:
-            for role in m.roles:
-                if role.id == client.eepy_role:
-                    # if m.timed_out_until:  this code didnt work and i m too lazy to fix it
-                    #     log_print(f"{m.name} is already muted")
-                    #     continue
-
-                    try:
-                        await m.timeout(datetime.timedelta(minutes=client.mins_to_eep), reason="time for u to eep")
-                    except discord.errors.Forbidden:
-                        log_print(f"Unable to mute {m.name}")
-                    log_print(f"muted {m.name}")
-
-
 with open("config.json") as meow:
-    token = json.load(meow)["token"]
+    if client.debug:
+        token = json.load(meow)["debug-token"]
+    else:
+        token = json.load(meow)["token"]
 
 # client = MyClient()
 client.run(token)
