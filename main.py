@@ -60,7 +60,7 @@ async def on_ready():
 async def reload(ctx):
     with open('config.json') as file:
         client.owners = json.load(file)["owner-ids"]
-    if ctx.author.id in owners:
+    if ctx.author.id in client.owners:
         if not debug:
             try:
                 g = git.cmd.Git(os.getcwd())

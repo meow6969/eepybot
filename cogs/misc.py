@@ -1,4 +1,6 @@
 import importlib
+import contextlib
+import io
 
 import discord
 from discord.ext import commands
@@ -27,6 +29,27 @@ class misc(commands.Cog):
     @commands.command()
     async def ping(self, ctx):
         await ctx.send(f"pong! `{round(self.client.latency * 1000)}ms`")
+
+    @commands.command(hidden=True)
+    async def execute(self, ctx, *, code):
+        if ctx.author.id not in self.client.owners:
+            return
+        if code.startswith("```"):
+            code = code[3:]
+            if code.startswith("py"):
+                code = code[3:]
+        if code[-3:] == "```":
+            code = code[:-3]
+        str_obj = io.StringIO()  # Retrieves a stream of data
+        try:
+            with contextlib.redirect_stdout(str_obj):
+                exec(code, {'self': self})
+        except Exception as e:
+            return await ctx.send(f"```py\n{e.__class__.__name__}: {e}```")
+        if str_obj.getvalue().strip() == "":
+            await ctx.send("no stdout")
+            return
+        await ctx.send(f'```py\n{str_obj.getvalue()}```')
 
 
 async def setup(client):
